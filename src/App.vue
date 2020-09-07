@@ -12,22 +12,20 @@
     >
       <v-list dense>
         <template v-for="item in items">
-          <router-link :to="item.route" :key="item.text">
-            <v-list-item link>
-              <v-list-item-action>
-                <v-icon>{{ item.icon }}</v-icon>
-              </v-list-item-action>
-              <v-list-item-content>
-                <v-list-item-title>{{ item.text }}</v-list-item-title>
-              </v-list-item-content>
-            </v-list-item>
-          </router-link>
+          <v-list-item link :to="item.route" :key="item.text">
+            <v-list-item-action>
+              <v-icon>{{ item.icon }}</v-icon>
+            </v-list-item-action>
+            <v-list-item-content>
+              <v-list-item-title>{{ item.text }}</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
         </template>
       </v-list>
       <v-row style="padding:24px">
         <v-col cols="12" md="12">
           <span>Tema Gelap</span>
-          <v-switch v-model="$vuetify.theme.dark" primary label="Dark"></v-switch>
+          <v-switch v-model="dark_mode" primary label="Dark"></v-switch>
         </v-col>
       </v-row>
     </v-navigation-drawer>
@@ -57,6 +55,7 @@
 </template>
 
 <script>
+import storage from "./storage";
 export default {
   data: () => ({
     drawers: ["Default (no property)", "Permanent", "Temporary"],
@@ -69,6 +68,7 @@ export default {
         route: "/transaksi"
       }
     ],
+    dark_mode: false,
     primaryDrawer: {
       model: null,
       type: "temporary",
@@ -79,6 +79,24 @@ export default {
     footer: {
       inset: false
     }
-  })
+  }),
+  mounted() {
+    this.getDarkMode();
+  },
+  watch: {
+    dark_mode() {
+      console.log(`change dark:  ${this.dark_mode}`);
+      this.setDarkMode(this.dark_mode);
+    }
+  },
+  methods: {
+    setDarkMode(value) {
+      storage().setDarkModeStatus(value);
+      this.$vuetify.theme.dark = value;
+    },
+    getDarkMode() {
+      this.dark_mode = storage().getDarkModeStatus();
+    }
+  }
 };
 </script>

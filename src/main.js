@@ -6,9 +6,16 @@ import router from './routes.js'
 const moment = require('moment')
 require('moment/locale/es')
 
+var moneyformat = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
+
 Vue.use(require('vue-moment'), {
   moment
 })
+
+Vue.use(moneyformat)
 
 Vue.config.productionTip = false
 new Vue({
