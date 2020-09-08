@@ -65,7 +65,7 @@ export default {
       {
         text: "Riwayat Transaksi",
         icon: "mdi-account-multiple",
-        route: "/transaksi"
+        route: "/riwayat-transaksi"
       }
     ],
     dark_mode: false,

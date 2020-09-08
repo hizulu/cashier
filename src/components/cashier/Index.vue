@@ -361,9 +361,11 @@ export default {
       // jika menu sudah masuk update qty
       this.transaction_info.stash.map((item, i) => {
         if (item.id == this.transaction_info.temp.id) {
-          this.transaction_info.stash[i].qty += parseInt(this.qty_dialog.value);
+          this.transaction_info.stash[i].qty =
+            parseInt(this.transaction_info.stash[i].qty) +
+            parseInt(this.qty_dialog.value);
           this.transaction_info.stash[i].total =
-            this.transaction_info.stash[i].qty * item.price;
+            parseInt(this.transaction_info.stash[i].qty) * item.price;
           updateQtyMode = true;
         }
       });

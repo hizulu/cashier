@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 
 Vue.use(VueRouter)
 import Cashier from './components/cashier/Index.vue'
+import History from './components/history/Index.vue'
 import Home from './components/Home.vue'
 export default new VueRouter({
     mode: 'history',
@@ -10,6 +11,11 @@ export default new VueRouter({
             path: '/kasir',
             name: 'kasir',
             component: Cashier
+        },
+        {
+            path: '/riwayat-transaksi',
+            name: 'riwayat-transaksi',
+            component: History
         },
         {
             path: '/',
