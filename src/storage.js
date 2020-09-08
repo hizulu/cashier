@@ -4,6 +4,7 @@ const MENUS_KEY = 'menus'
 const STASH_KEY = 'stash'
 const TRANSACTOINS_KEY = 'transactions'
 const CURRENT_TRANSACTION_KEY = 'current_transaction'
+const SAUCES_KEY = 'sauces'
 
 // const CUSTOMER_INFO = ' '
 const getLastDownloadMenu = () => {
@@ -12,6 +13,16 @@ const getLastDownloadMenu = () => {
 const setLastDownloadMenu = (value) => {
     localStorage.setItem(LAST_DOWNLOAD_MENU_KEY, value)
 }
+// 
+const getSauces = () => {
+    let value = localStorage.getItem(SAUCES_KEY)
+    return (value == null) ? [] : JSON.parse(value)
+}
+const setSauces = (value) => {
+    localStorage.setItem(SAUCES_KEY, JSON.stringify(value))
+}
+// 
+
 // 
 const getCurrentTransaction = () => {
     let value = localStorage.getItem(CURRENT_TRANSACTION_KEY)
@@ -80,5 +91,7 @@ export default () => ({
     setTransactions,
     pushTransaction,
     getCurrentTransaction,
-    setCurrentTransaction
+    setCurrentTransaction,
+    getSauces,
+    setSauces
 })

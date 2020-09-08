@@ -53,6 +53,9 @@ export default {
     clear() {
       this.name = null;
       this.table = null;
+      this.$nextTick(() => {
+        this.$refs.customer_name.focus();
+      });
     },
     getName() {
       return this.name;

@@ -10,7 +10,7 @@
     </v-alert>
     <v-card outlined>
       <v-container>
-        <div class="mb-5">{{ currentDate }}</div>
+        <div class="mb-2">{{ currentDate }}</div>
 
         <v-row>
           <v-col cols="12" sm="4">
@@ -56,9 +56,10 @@
 
             <!-- summary pesanan -->
             <v-row>
-              <v-col cols="12" md="8">
+              <v-col cols="12" md="9">
                 <div>
                   <v-btn
+                    v-if="transaction_info.stash.length > 0"
                     @click="clearStash()"
                     class="ma-2"
                     depressed
@@ -70,15 +71,47 @@
                   >
                     <v-icon left>mdi-delete</v-icon>clear
                   </v-btn>
-                  <v-btn class="ma-2" depressed small tile outlined color="primary" dark>
-                    <v-icon left>mdi-printer</v-icon>cetak nota
+                  <v-btn
+                    v-if="transaction_info.paid > 0"
+                    @click="print"
+                    class="ma-2"
+                    depressed
+                    small
+                    tile
+                    outlined
+                    color="primary"
+                    dark
+                  >
+                    <v-icon left>mdi-printer</v-icon>cetak
                   </v-btn>
-                  <v-btn @click="checkout()" class="ma-2" depressed small tile color="primary" dark>
-                    <v-icon left>mdi-send</v-icon>checkout
+                  <v-btn
+                    v-if="transaction_info.stash.length > 0"
+                    @click="checkout()"
+                    class="ma-2"
+                    outlined
+                    depressed
+                    small
+                    tile
+                    color="primary"
+                    dark
+                  >
+                    <v-icon left>mdi-currency-usd</v-icon>bayar nanti
+                  </v-btn>
+                  <v-btn
+                    v-if="transaction_info.stash.length > 0"
+                    @click="pay()"
+                    class="ma-2"
+                    depressed
+                    small
+                    tile
+                    color="primary"
+                    dark
+                  >
+                    <v-icon left>mdi-currency-usd</v-icon>bayar
                   </v-btn>
                 </div>
               </v-col>
-              <v-col cols="12" md="4">
+              <v-col cols="12" md="3">
                 <v-row class="text-right">
                   <v-col>
                     Total:
@@ -90,7 +123,7 @@
             <!-- summary pesanan -->
             <hr />
 
-            <v-select :items="sauces" small label="Saos" multiple></v-select>
+            <v-select :items="sauceslist" v-model="sauces" small label="Saos" multiple></v-select>
             <!-- tabel pesanan -->
             <v-card outlined>
               <v-simple-table dense>
@@ -138,7 +171,11 @@
         </v-row>
       </v-container>
     </v-card>
-
+    <payment
+      :open="openpaymentdialog"
+      :total="transaction_info.total"
+      @close="openpaymentdialog = false"
+    ></payment>
     <v-snackbar
       :timeout="notification.timeout"
       v-model="notification.visible"
@@ -204,14 +241,18 @@
 import storage from "../../storage";
 import money from "../../moneyformat";
 import customer_info from "./CustomerInfo";
+import printer from "../../printer";
+import payment from "./Payment";
 export default {
   components: {
-    "customer-info": customer_info
+    "customer-info": customer_info,
+    payment: payment
   },
   data() {
     return {
       currentDate: "",
-      sauces: ["Thai", "Black Pepper", "Peanut"],
+      openpaymentdialog: false,
+      sauceslist: ["Thai", "Black Pepper", "Peanut"],
       menus: [],
       qty_dialog: {
         visible: false,
@@ -230,18 +271,19 @@ export default {
         temp: null,
         total: 0
       },
+      sauces: [],
       filter: "",
       notification: {
         visible: false,
         text: "",
         color: "red",
-        timeout: 1000
+        timeout: 1500
       },
       menu_section: {
         selected_menu: {},
         filter_input: "",
         filter_result: [],
-        display_default_count: 4
+        display_default_count: 1000
       },
       moneyformatter: money()
     };
@@ -249,10 +291,8 @@ export default {
   mounted() {
     this.countDate();
     this.menus = storage().getMenus();
-    this.menu_section.filter_result = this.menus.slice(
-      0,
-      this.menu_section.display_default_count
-    );
+    this.sauces = storage().getSauces();
+    this.menu_section.filter_result = [];
     this.transaction_info.stash = storage().getStash();
     this.countTotal();
     // var formatter = new Intl.NumberFormat("en-US", {
@@ -263,6 +303,9 @@ export default {
   watch: {
     filter() {
       this.menu_section.filter_result = this.filterMenu(this.filter);
+    },
+    sauces() {
+      storage().setSauces(this.sauces);
     }
   },
   methods: {
@@ -278,12 +321,14 @@ export default {
       this.currentDate = this.getCurrentDate();
     },
     filterMenu(query) {
-      return this.menus.filter(item => {
-        return (
-          (item.barcode && item.barcode.includes(query)) ||
-          item.name.toLowerCase().includes(query)
-        );
-      });
+      if (query != "") {
+        return this.menus.filter(item => {
+          return (
+            (item.barcode && item.barcode.includes(query)) ||
+            item.name.toLowerCase().includes(query)
+          );
+        });
+      }
     },
     inputMenu(menuIndex = null) {
       if (menuIndex != null) {
@@ -359,17 +404,22 @@ export default {
       this.transaction_info.stash.splice(this.dlt_dialog.index, 1);
       this.dlt_dialog.visible = false;
       this.countTotal();
+      storage().setStash(this.transaction_info.stash);
     },
     clearStash() {
       storage().setStash([]);
       this.transaction_info.stash = [];
       this.transaction_info.total = 0;
+      this.sauces = [];
       this.$refs.cinfo.clear();
     },
     isValidReservation() {
       let name = this.$refs.cinfo.getName();
-      let table = this.$refs.cinfo.getTable();
-      if (name == null || name == "" || table == null || table == 0) {
+      // let table = this.$refs.cinfo.getTable();
+      if (name == null || name == "") {
+        this.notification.visible = true;
+        this.notification.text =
+          "Pastikan nama pembeli dan no meja sudah diisi";
         return false;
       }
 
@@ -378,19 +428,29 @@ export default {
     checkout() {
       if (this.isValidReservation()) {
         let reserve = {
+          id: Date.now(),
           customer_name: this.$refs.cinfo.getName(),
           table_number: this.$refs.cinfo.getTable(),
           date: this.$moment().format("YYYY-MM-DD"),
           time: this.$moment().format("H:mm:ss"),
           total: this.transaction_info.total,
-          stash: this.transaction_info.stash
+          stash: this.transaction_info.stash,
+          paid: 0,
+          sauces: this.sauces
         };
         storage().pushTransaction(reserve);
         this.clearStash();
-      } else {
-        this.notification.visible = true;
-        this.notification.text =
-          "Pastikan nama pembeli dan no meja sudah diisi";
+      }
+    },
+    pay() {
+      if (this.isValidReservation()) {
+        this.openpaymentdialog = true;
+      }
+    },
+    print() {
+      if (this.isValidReservation()) {
+        printer().init();
+        printer().print();
       }
     }
   }

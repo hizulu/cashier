@@ -10,7 +10,9 @@
   "dependencies": {
     "core-js": "^3.6.5",
     "firebase": "^7.2.3",
+    "recta": "^1.0.0",
     "vue": "^2.6.11",
+    "vue-html-to-paper": "^1.3.1",
     "vue-moment": "^4.1.0",
     "vue-router": "^3.4.3",
     "vue-types": "^2.0.1",
