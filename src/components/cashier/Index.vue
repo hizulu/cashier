@@ -8,7 +8,6 @@
         </v-col>
       </v-row>
     </v-alert>
-    <div class="text-h3 mb-4">Kasir</div>
     <v-card outlined>
       <v-container>
         <div class="mb-5">{{ currentDate }}</div>
@@ -30,7 +29,7 @@
             <v-card outlined>
               <v-subheader>Hasil pencarian menu</v-subheader>
               <v-list dense>
-                <v-list-item-group v-model="selectedMenu" color="primary">
+                <v-list-item-group color="primary">
                   <v-list-item
                     v-for="(menu, i) in menu_section.filter_result"
                     :key="i"
@@ -52,33 +51,38 @@
             <hr />
             <br />
             <!-- informasi pembeli -->
-            <v-row>
-              <v-col rows="12" md="8" sm="12">
-                <v-text-field ref="customer_name" label="Nama Pembeli" outlined dense clearable></v-text-field>
-              </v-col>
-              <v-col rows="12" md="4" sm="12">
-                <v-text-field label="No Meja" outlined dense clearable></v-text-field>
-              </v-col>
-            </v-row>
+            <customer-info ref="cinfo"></customer-info>
             <!-- informasi pembeli -->
 
             <!-- summary pesanan -->
             <v-row>
-              <v-col cols="12" md="6">
+              <v-col cols="12" md="8">
                 <div>
+                  <v-btn
+                    @click="clearStash()"
+                    class="ma-2"
+                    depressed
+                    small
+                    tile
+                    outlined
+                    color="error"
+                    dark
+                  >
+                    <v-icon left>mdi-delete</v-icon>clear
+                  </v-btn>
                   <v-btn class="ma-2" depressed small tile outlined color="primary" dark>
                     <v-icon left>mdi-printer</v-icon>cetak nota
                   </v-btn>
-                  <v-btn class="ma-2" depressed small tile color="primary" dark>
+                  <v-btn @click="checkout()" class="ma-2" depressed small tile color="primary" dark>
                     <v-icon left>mdi-send</v-icon>checkout
                   </v-btn>
                 </div>
               </v-col>
-              <v-col cols="12" md="6">
+              <v-col cols="12" md="4">
                 <v-row class="text-right">
                   <v-col>
                     Total:
-                    <span class="text-h6">Rp. 2,000</span>
+                    <span class="text-h6">{{ moneyformatter.format(transaction_info.total) }}</span>
                   </v-col>
                 </v-row>
               </v-col>
@@ -102,14 +106,14 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(item, i) in desserts" :key="item.name">
+                    <tr v-for="(item, i) in transaction_info.stash" :key="item.id">
                       <td>{{ i+1 }}</td>
                       <td>{{ item.name }}</td>
-                      <td align="right">{{ item.price }}</td>
+                      <td align="right">{{ moneyformatter.format(item.price) }}</td>
                       <td align="right">{{ item.qty }}</td>
-                      <td align="right">{{ item.total }}</td>
+                      <td align="right">{{ moneyformatter.format(item.total) }}</td>
                       <td class="text-center">
-                        <v-btn icon color="red">
+                        <v-btn icon color="red" @click="showDeleteDialog(i)">
                           <v-icon>mdi-delete</v-icon>
                         </v-btn>
                       </td>
@@ -119,7 +123,7 @@
                     <tr>
                       <td class="text-h6">Total</td>
                       <td align="right" colspan="4">
-                        <p class="text-h6">1234</p>
+                        <p class="text-h6">{{ moneyformatter.format(transaction_info.total) }}</p>
                       </td>
                     </tr>
                   </tfoot>
@@ -157,8 +161,10 @@
             <v-card-text>
               <v-text-field
                 ref="qty"
-                @focus="qty_dialog.visible"
+                type="number"
+                v-model="qty_dialog.value"
                 label="Qty"
+                @keyup.enter="onQtyConfirm()"
                 outlined
                 dense
                 clearable
@@ -166,48 +172,63 @@
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn color="green darken-1" text @click="qty_dialog.visible = false">Agree</v-btn>
+              <v-btn color="green darken-1" text @click="qty_dialog.visible = false">batal</v-btn>
+              <v-btn color="green darken-1" text @click="onQtyConfirm()">Tambah</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
       </v-row>
     </template>
+
+    <!-- delete -->
+    <template>
+      <v-row justify="center">
+        <v-dialog v-model="dlt_dialog.visible" persistent max-width="290">
+          <v-card>
+            <v-card-title class="headline">{{ `Hapus '${dlt_dialog.item.name}'?` }}</v-card-title>
+            <v-card-text>Apakah anda yakin ingin menghapus pesanan ini?</v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="green darken-1" text @click="dlt_dialog.visible = false">batal</v-btn>
+              <v-btn color="green darken-1" text @click="deleteStashItem()">Hapus</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+      </v-row>
+    </template>
+    <!-- delete -->
   </div>
 </template>
 
 <script>
-import { nextTick } from "vue/types/umd";
 import storage from "../../storage";
 import money from "../../moneyformat";
+import customer_info from "./CustomerInfo";
 export default {
+  components: {
+    "customer-info": customer_info
+  },
   data() {
     return {
       currentDate: "",
-      selectedMenu: {},
       sauces: ["Thai", "Black Pepper", "Peanut"],
       menus: [],
       qty_dialog: {
         visible: false,
-        menu_name: ""
+        menu_name: "",
+        value: null
       },
-      desserts: [
-        {
-          name: "Frozen Yogurt",
-          price: 1000,
-          qty: 2,
-          total: 2000
-        },
-        {
-          name: "Yogurt",
-          price: 1000,
-          qty: 2,
-          total: 2000
-        }
-      ],
+      dlt_dialog: {
+        visible: false,
+        item: {},
+        index: -1
+      },
       transaction_info: {
         customer_name: "",
-        table_number: "",
-        stash: []
+        table_number: null,
+        stash: [],
+        temp: null,
+        total: 0
       },
       filter: "",
       notification: {
@@ -220,7 +241,7 @@ export default {
         selected_menu: {},
         filter_input: "",
         filter_result: [],
-        display_default_count: 100
+        display_default_count: 4
       },
       moneyformatter: money()
     };
@@ -232,8 +253,8 @@ export default {
       0,
       this.menu_section.display_default_count
     );
-
-    this.$refs.customer_name.focus();
+    this.transaction_info.stash = storage().getStash();
+    this.countTotal();
     // var formatter = new Intl.NumberFormat("en-US", {
     //   style: "currency",
     //   currency: "USD"
@@ -248,17 +269,18 @@ export default {
     getCurrentDate() {
       return this.$moment()
         .locale("id")
-        .format("dddd, Do MMMM YYYY, H:mm:ss ");
+        .format("dddd, Do MMMM YYYY");
     },
     countDate() {
-      window.setInterval(() => {
-        this.currentDate = this.getCurrentDate();
-      }, 1000);
+      // window.setInterval(() => {
+
+      // }, 1000);
+      this.currentDate = this.getCurrentDate();
     },
     filterMenu(query) {
       return this.menus.filter(item => {
         return (
-          item.barcode.includes(query) ||
+          (item.barcode && item.barcode.includes(query)) ||
           item.name.toLowerCase().includes(query)
         );
       });
@@ -268,7 +290,6 @@ export default {
         this.insertMenuToStash(this.menu_section.filter_result[menuIndex]);
       }
       if (this.menu_section.filter_result.length == 1) {
-        console.log("asda mantap");
         // popup quantity
         this.insertMenuToStash(this.menu_section.filter_result[0]);
       } else if (this.menu_section.filter_result.length == 0) {
@@ -277,11 +298,100 @@ export default {
         this.notification.color = "red";
       }
     },
-    insertMenuToStash(menu) {
-      // this.$refs.qty.$el.focus();
+    insertMenuToStash(val) {
+      this.transaction_info.temp = val;
+      setTimeout(() => {
+        this.$refs.qty.focus();
+      }, 1);
+
       this.qty_dialog.visible = true;
-      this.qty_dialog.menu_name = menu.name;
+      this.qty_dialog.menu_name = val.name;
+    },
+    onQtyConfirm() {
+      let updateQtyMode = false;
+      if (this.qty_dialog.value == null || this.qty_dialog.value == 0) {
+        this.qty_dialog.value = 1;
+      }
+
+      // jika menu sudah masuk update qty
+      this.transaction_info.stash.map((item, i) => {
+        if (item.id == this.transaction_info.temp.id) {
+          this.transaction_info.stash[i].qty += parseInt(this.qty_dialog.value);
+          this.transaction_info.stash[i].total =
+            this.transaction_info.stash[i].qty * item.price;
+          updateQtyMode = true;
+        }
+      });
+
+      if (!updateQtyMode) {
+        let val = {
+          ...this.transaction_info.temp,
+          ...{
+            qty: this.qty_dialog.value,
+            total: this.qty_dialog.value * this.transaction_info.temp.price
+          }
+        };
+        this.transaction_info.stash.unshift(val);
+      }
+
+      this.qty_dialog.visible = false;
+      this.qty_dialog.value = null;
+      setTimeout(() => {
+        this.$refs.filter.focus();
+      }, 1);
+      this.countTotal();
+      storage().setStash(this.transaction_info.stash);
       this.filter = "";
+    },
+    countTotal() {
+      let total = 0;
+      this.transaction_info.stash.map(item => {
+        total += item.total;
+      });
+      this.transaction_info.total = total;
+    },
+    showDeleteDialog(index) {
+      this.dlt_dialog.item = this.transaction_info.stash[index];
+      this.dlt_dialog.visible = true;
+      this.dlt_dialog.index = index;
+    },
+    deleteStashItem() {
+      this.transaction_info.stash.splice(this.dlt_dialog.index, 1);
+      this.dlt_dialog.visible = false;
+      this.countTotal();
+    },
+    clearStash() {
+      storage().setStash([]);
+      this.transaction_info.stash = [];
+      this.transaction_info.total = 0;
+      this.$refs.cinfo.clear();
+    },
+    isValidReservation() {
+      let name = this.$refs.cinfo.getName();
+      let table = this.$refs.cinfo.getTable();
+      if (name == null || name == "" || table == null || table == 0) {
+        return false;
+      }
+
+      return true;
+    },
+    checkout() {
+      if (this.isValidReservation()) {
+        let reserve = {
+          customer_name: this.$refs.cinfo.getName(),
+          table_number: this.$refs.cinfo.getTable(),
+          date: this.$moment().format("YYYY-MM-DD"),
+          time: this.$moment().format("H:mm:ss"),
+          total: this.transaction_info.total,
+          stash: this.transaction_info.stash
+        };
+        storage().pushTransaction(reserve);
+        this.clearStash();
+      } else {
+        this.notification.visible = true;
+        this.notification.text =
+          "Pastikan nama pembeli dan no meja sudah diisi";
+      }
     }
   }
 };
