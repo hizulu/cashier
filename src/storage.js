@@ -1,4 +1,5 @@
 const LAST_DOWNLOAD_MENU_KEY = 'last_download_menu'
+const LAST_CLOSE_ORDER_KEY = 'last_close_order'
 const DARK_MODE_KEY = 'dark_mode'
 const MENUS_KEY = 'menus'
 const STASH_KEY = 'stash'
@@ -12,6 +13,14 @@ const getLastDownloadMenu = () => {
 }
 const setLastDownloadMenu = (value) => {
     localStorage.setItem(LAST_DOWNLOAD_MENU_KEY, value)
+}
+//
+// 
+const getLastCloseOrder = () => {
+    return localStorage.getItem(LAST_CLOSE_ORDER_KEY)
+}
+const setLastCloseOrder = (value) => {
+    localStorage.setItem(LAST_CLOSE_ORDER_KEY, value)
 }
 // 
 const getSauces = () => {
@@ -93,5 +102,7 @@ export default () => ({
     getCurrentTransaction,
     setCurrentTransaction,
     getSauces,
-    setSauces
+    setSauces,
+    getLastCloseOrder,
+    setLastCloseOrder
 })

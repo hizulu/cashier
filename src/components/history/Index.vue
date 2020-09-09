@@ -3,40 +3,29 @@
     <v-card outlined>
       <v-container>
         <v-card-title>
-          Total Transaksi hari ini:
-          <v-spacer></v-spacer>
-          <v-text-field
-            v-model="search"
-            append-icon="mdi-magnify"
-            label="Search"
-            single-line
-            hide-details
-          ></v-text-field>
+          <v-row>
+            <v-col cols="12" md="5">
+              <p>Total transaksi: {{ money.format(summary.total) }}</p>
+              <p>Total transaksi lunas: {{ money.format(summary.paid) }}</p>
+            </v-col>
+            <v-col cols="12" md="7">
+              <v-text-field
+                v-model="search"
+                append-icon="mdi-magnify"
+                label="Search"
+                single-line
+                hide-details
+              ></v-text-field>
+            </v-col>
+          </v-row>
         </v-card-title>
-        <v-data-table
-          :headers="headers"
-          :items="transactions"
-          sort-by="calories"
-          class="elevation-1"
-        >
+        <v-data-table :search="search" :headers="headers" :items="items" class="elevation-1">
           <template v-if="transactions.length <= 0" v-slot:no-data>Tidak ada pesanan</template>
-          <template v-else v-slot:body="{ items }">
-            <tbody>
-              <tr v-for="(item, i) in items" :key="item.id">
-                <td>{{ i+1 }}</td>
-                <td>
-                  <router-link :to="`/kasir?index=${i}&id=${item.id}`">{{ item.customer_name }}</router-link>
-                </td>
-                <td class="text-center">{{ item.table_number }}</td>
-                <td class="text-right">{{ money.format(item.paid) }}</td>
-                <td class="text-center">{{ `${item.date} ${item.time}` }}</td>
-                <td class="text-right">{{ money.format(item.total) }}</td>
-                <td class="text-center">
-                  <!-- <v-icon small class="mr-2" @click="editItem(item)">mdi-pencil</v-icon> -->
-                  <v-icon small @click="del(i)">mdi-delete</v-icon>
-                </td>
-              </tr>
-            </tbody>
+          <template v-slot:item.customer_name="{ item }">
+            <router-link :to="`/kasir?index=${item.i-1}`">{{ item.customer_name }}</router-link>
+          </template>
+          <template v-slot:item.actions="{ item }">
+            <v-icon v-if="item.paid < item.total" small @click="del(item.i-1)">mdi-delete</v-icon>
           </template>
         </v-data-table>
       </v-container>
@@ -77,20 +66,43 @@ export default {
         {
           text: "No",
           align: "start",
-          sortable: false
+          sortable: false,
+          value: "i"
         },
-        { text: "Nama Pelanggan", value: "calories" },
-        { text: "No Meja", align: "center", value: "fat" },
-        { text: "Dibayar", align: "center", value: "carbs" },
-        { text: "Tgl Waktu", align: "center", value: "protein" },
-        { text: "Total", align: "center" },
+        { text: "Nama Pelanggan", value: "customer_name" },
+        { text: "No Meja", align: "center", value: "table_number" },
+        { text: "Tgl Waktu", align: "center", value: "datetime" },
+        { text: "Total", align: "center", value: "total" },
+        { text: "Dibayar", align: "center", value: "paid" },
+        { text: "Kembalian", align: "center", value: "moneyreturn" },
         { text: "Aksi", align: "center", value: "actions", sortable: false }
       ],
-      transactions: []
+      transactions: [],
+      summary: {
+        total: 0,
+        paid: 0
+      }
     };
+  },
+  computed: {
+    items() {
+      return this.transactions.map((item, i) => {
+        return {
+          i: i + 1,
+          id: item.id,
+          customer_name: item.customer_name,
+          table_number: item.table_number,
+          datetime: `${item.date} ${item.time}`,
+          total: moneyformat().format(item.total),
+          paid: moneyformat().format(item.paid),
+          moneyreturn: moneyformat().format(item.paid - item.total)
+        };
+      });
+    }
   },
   mounted() {
     this.transactions = storage().getTransactions();
+    this.countAll();
   },
   methods: {
     del(index, confirm = false) {
@@ -98,10 +110,25 @@ export default {
         this.transactions.splice(index, 1);
         storage().setTransactions(this.transactions);
         this.dlt_dialog.visible = false;
+        this.countAll();
+      } else {
+        this.dlt_dialog.name = this.transactions[index].customer_name;
+        this.dlt_dialog.visible = true;
+        this.dlt_dialog.index = index;
       }
-      this.dlt_dialog.name = this.transactions[index].customer_name;
-      this.dlt_dialog.visible = true;
-      this.dlt_dialog.index = index;
+
+      // this.countAll();
+    },
+    countAll() {
+      this.summary.total = 0;
+      this.summary.paid = 0;
+
+      this.transactions.map(item => {
+        this.summary.total += item.total;
+        if (item.paid >= item.total) {
+          this.summary.paid += item.total;
+        }
+      });
     }
   }
 };

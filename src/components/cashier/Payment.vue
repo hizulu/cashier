@@ -39,20 +39,24 @@
             <v-col cols="12" md="4" class="text-right text-h6">{{ mf.format(moneyreturn) }}</v-col>
           </v-row>
           <hr />
-          <div>
-            Status printer:
-            <div v-if="printerStatus" class="text-h6">READY</div>
-            <div v-else class="text-h6">ERROR</div>
-            <v-btn color="info" small @click="checkPrinterStatus()">Refresh</v-btn>
-            <v-btn color="info" class="ml-1" small @click="testPrint()">test print</v-btn>
-          </div>
+          <v-row>
+            <v-col cols="12" md="4">
+              Status printer:
+              <div v-if="printerStatus" class="text-h6">READY</div>
+              <div v-else class="text-h6">ERROR</div>
+            </v-col>
+            <v-col cols="12" md="8">
+              <v-btn color="info" small @click="checkPrinterStatus()">Refresh</v-btn>
+              <v-btn color="info" class="ml-1" small @click="testPrint()">test print</v-btn>
+            </v-col>
+          </v-row>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="red darken-1" text @click="$emit('close')">BATAL</v-btn>
-          <v-btn color="blue darken-1" text @click="open = false">CETAK NOTA</v-btn>
-          <v-btn color="blue darken-1" text @click="open = false">confirm</v-btn>
+          <v-btn color="blue darken-1" text @click="doPay()">BAYAR dan cetak nota</v-btn>
+          <v-btn color="blue darken-1" text @click="$emit('paymentconfirm')">confirm</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -125,39 +129,67 @@ export default {
     testPrint() {
       printer().test();
     },
-    doPay() {
+    doPay(reprint = false) {
       //   validate input
-      if (this.value < this.total) {
-        this.notification.visible = false;
-        this.notification.visible = true;
-        this.notification.text = "Uang tunai kurang untuk membayar tagihan.";
-      } else {
-        //   masukkan status dibayar
-        let payment = {
-          paid: parseInt(this.value),
-          moneyreturn: this.value - this.total
-        };
-
-        let currentTransaction = storage().getCurrentTransaction();
-        storage().setCurrentTransaction({
-          ...currentTransaction,
-          ...payment,
-          date: this.$moment()
-            .locale("id")
-            .format("DD-MM-YYYY"),
-          time: this.$moment()
-            .locale("id")
-            .format("H:mm")
-        });
-
+      if (reprint) {
         let obj = {
           ...storage().getCurrentTransaction(),
           ...{ stash: storage().getStash() },
           ...{ sauces: storage().getSauces() },
           total: this.total
         };
-        console.log(obj);
-        // printer().print(obj);
+        printer().print(obj);
+      } else {
+        if (this.value < this.total) {
+          this.notification.visible = false;
+          this.notification.visible = true;
+          this.notification.text = "Uang tunai kurang untuk membayar tagihan.";
+        } else {
+          //   masukkan status dibayar
+          let payment = {
+            paid: parseInt(this.value),
+            moneyreturn: parseInt(this.value) - parseInt(this.total)
+          };
+
+          let currentTransaction = storage().getCurrentTransaction();
+          let paidTransaction = {
+            ...payment,
+            date: this.$moment()
+              .locale("id")
+              .format("DD-MM-YYYY"),
+            time: this.$moment()
+              .locale("id")
+              .format("H:mm"),
+            ...{
+              customer_name: currentTransaction.customer_name,
+              table_number: currentTransaction.table_number,
+              stash: currentTransaction.stash,
+              sauces: currentTransaction.sauces,
+              id: currentTransaction.id ? currentTransaction.id : Date.now(),
+              total: currentTransaction.total
+            }
+          };
+          storage().setCurrentTransaction(paidTransaction);
+
+          let transactions = storage().getTransactions();
+          for (let i = 0; i < transactions.length; i++) {
+            if (transactions[i].id == paidTransaction.id) {
+              transactions.splice(i, 1);
+              transactions.unshift(paidTransaction);
+              storage().setTransactions(transactions);
+              break;
+            }
+          }
+          let obj = {
+            ...storage().getCurrentTransaction(),
+            ...{ stash: storage().getStash() },
+            ...{ sauces: storage().getSauces() },
+            total: this.total
+          };
+          // console.log(obj);
+          // alert("diprint");
+          printer().print(obj);
+        }
       }
     }
   }

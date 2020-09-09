@@ -18,6 +18,7 @@
             <hr />
             <br />
             <v-text-field
+              :disabled="paid"
               ref="filter"
               @keyup.enter="inputMenu()"
               label="Barcode atau nama menu"
@@ -51,7 +52,7 @@
             <hr />
             <br />
             <!-- informasi pembeli -->
-            <customer-info ref="cinfo"></customer-info>
+            <customer-info :disabled="paid" ref="cinfo"></customer-info>
             <!-- informasi pembeli -->
 
             <!-- summary pesanan -->
@@ -72,7 +73,7 @@
                     <v-icon left>mdi-delete</v-icon>clear
                   </v-btn>
                   <v-btn
-                    v-if="transaction_info.paid > 0"
+                    v-if="transaction_info.stash.length > 0 && transaction_info.paid > 0"
                     @click="print"
                     class="ma-2"
                     depressed
@@ -85,7 +86,7 @@
                     <v-icon left>mdi-printer</v-icon>cetak
                   </v-btn>
                   <v-btn
-                    v-if="transaction_info.stash.length > 0"
+                    v-if="transaction_info.stash.length > 0 && transaction_info.paid < transaction_info.total"
                     @click="checkout()"
                     class="ma-2"
                     outlined
@@ -98,7 +99,7 @@
                     <v-icon left>mdi-currency-usd</v-icon>bayar nanti
                   </v-btn>
                   <v-btn
-                    v-if="transaction_info.stash.length > 0"
+                    v-if="transaction_info.stash.length > 0 && transaction_info.paid < transaction_info.total"
                     @click="pay()"
                     class="ma-2"
                     depressed
@@ -123,7 +124,14 @@
             <!-- summary pesanan -->
             <hr />
 
-            <v-select :items="sauceslist" v-model="sauces" small label="Saos" multiple></v-select>
+            <v-select
+              :disabled="paid"
+              :items="sauceslist"
+              v-model="sauces"
+              small
+              label="Saos"
+              multiple
+            ></v-select>
             <!-- tabel pesanan -->
             <v-card outlined>
               <v-simple-table dense>
@@ -146,7 +154,7 @@
                       <td align="right">{{ item.qty }}</td>
                       <td align="right">{{ moneyformatter.format(item.total) }}</td>
                       <td class="text-center">
-                        <v-btn icon color="red" @click="showDeleteDialog(i)">
+                        <v-btn v-if="!paid" icon color="red" @click="showDeleteDialog(i)">
                           <v-icon>mdi-delete</v-icon>
                         </v-btn>
                       </td>
@@ -172,8 +180,10 @@
       </v-container>
     </v-card>
     <payment
+      ref="payment"
       :open="openpaymentdialog"
       :total="transaction_info.total"
+      @paymentconfirm="onPaymentConfirm()"
       @close="openpaymentdialog = false"
     ></payment>
     <v-snackbar
@@ -241,7 +251,7 @@
 import storage from "../../storage";
 import money from "../../moneyformat";
 import customer_info from "./CustomerInfo";
-import printer from "../../printer";
+// import printer from "../../printer";
 import payment from "./Payment";
 export default {
   components: {
@@ -269,7 +279,12 @@ export default {
         table_number: null,
         stash: [],
         temp: null,
-        total: 0
+        total: 0,
+        paid: 0
+      },
+      reroute: {
+        index: null,
+        id: null
       },
       sauces: [],
       filter: "",
@@ -288,7 +303,21 @@ export default {
       moneyformatter: money()
     };
   },
+  computed: {
+    paid() {
+      return (
+        this.transaction_info.stash.length > 0 && this.transaction_info.paid > 0
+      );
+    }
+  },
   mounted() {
+    if (this.$route.query.index) {
+      this.reroute.index = this.$route.query.index;
+      this.reroute.id = this.$route.query.id;
+
+      this.loadTransactionData(this.reroute.index);
+    }
+    this.$refs.cinfo.mount();
     this.countDate();
     this.menus = storage().getMenus();
     this.sauces = storage().getSauces();
@@ -309,6 +338,17 @@ export default {
     }
   },
   methods: {
+    loadTransactionData(index) {
+      let transactions = storage().getTransactions();
+      let transaction = transactions[index];
+
+      this.transaction_info = transaction;
+      this.sauces = transaction.sauces;
+
+      storage().setSauces(transaction.sauces);
+      storage().setCurrentTransaction(transaction);
+      storage().setStash(transaction.stash);
+    },
     getCurrentDate() {
       return this.$moment()
         .locale("id")
@@ -410,10 +450,15 @@ export default {
     },
     clearStash() {
       storage().setStash([]);
+      storage().setCurrentTransaction({});
+      storage().setSauces([]);
       this.transaction_info.stash = [];
       this.transaction_info.total = 0;
+      this.transaction_info.paid = 0;
       this.sauces = [];
       this.$refs.cinfo.clear();
+      this.reroute.index = null;
+      this.$router.push("kasir");
     },
     isValidReservation() {
       let name = this.$refs.cinfo.getName();
@@ -440,6 +485,21 @@ export default {
           paid: 0,
           sauces: this.sauces
         };
+        let currentTransaction = storage().getCurrentTransaction();
+        if (currentTransaction.id != null) {
+          //  update
+          let transactions = storage().getTransactions();
+          for (let i = 0; i < transactions.length; i++) {
+            if (
+              transactions[i].id &&
+              transactions[i].id == currentTransaction.id
+            ) {
+              transactions.splice(i, 1);
+              storage().setTransactions(transactions);
+              break;
+            }
+          }
+        }
         storage().pushTransaction(reserve);
         this.clearStash();
       }
@@ -450,10 +510,11 @@ export default {
       }
     },
     print() {
-      if (this.isValidReservation()) {
-        printer().init();
-        printer().print();
-      }
+      this.$refs.payment.doPay(true);
+    },
+    onPaymentConfirm() {
+      this.transaction_info = storage().getCurrentTransaction();
+      this.openpaymentdialog = false;
     }
   }
 };

@@ -3,6 +3,7 @@
     <v-row>
       <v-col rows="12" md="8" sm="12">
         <v-text-field
+          :disabled="disabled"
           v-model="name"
           ref="customer_name"
           label="Nama Pembeli"
@@ -12,7 +13,15 @@
         ></v-text-field>
       </v-col>
       <v-col rows="12" md="4" sm="12">
-        <v-text-field v-model="table" type="number" label="No Meja" outlined dense clearable></v-text-field>
+        <v-text-field
+          :disabled="disabled"
+          v-model="table"
+          type="number"
+          label="No Meja"
+          outlined
+          dense
+          clearable
+        ></v-text-field>
       </v-col>
     </v-row>
   </div>
@@ -21,6 +30,7 @@
 <script>
 import storage from "../../storage";
 export default {
+  props: ["disabled"],
   data() {
     return {
       name: null,
@@ -37,16 +47,18 @@ export default {
   },
   mounted() {
     this.$refs.customer_name.focus();
-    let customer = storage().getCurrentTransaction();
-    this.name = customer.customer_name ? customer.customer_name : null;
-    this.table = customer.table_number ? customer.table_number : null;
   },
   methods: {
+    mount() {
+      let customer = storage().getCurrentTransaction();
+      this.name = customer.customer_name ? customer.customer_name : null;
+      this.table = customer.table_number ? customer.table_number : null;
+    },
     updateCurrentTransaction() {
-      storage().setCurrentTransaction({
-        customer_name: this.name,
-        table_number: this.table
-      });
+      let tr = storage().getCurrentTransaction();
+      tr.customer_name = this.name;
+      tr.table_number = this.table;
+      storage().setCurrentTransaction(tr);
       this.$emit("update_name", this.cname);
       this.$emit("update_table", this.ctable);
     },

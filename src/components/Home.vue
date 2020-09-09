@@ -13,6 +13,10 @@
                   Terakhir download menu :
                   <span>{{ (lastDownloadMenu == null) ? '-' : lastDownloadMenu }}</span>
                 </p>
+                <p>
+                  Terakhir close order :
+                  <span>{{ lastCloseOrder || '-'}}</span>
+                </p>
 
                 <v-alert
                   prominent
@@ -59,6 +63,10 @@ export default {
   data: () => {
     return {
       db: null,
+      closeOrderDialog: {
+        visible: false
+      },
+      lastCloseOrder: null,
       lastDownloadMenu: null,
       loader: {
         downloadMenu: false
