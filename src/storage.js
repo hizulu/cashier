@@ -6,6 +6,31 @@ const STASH_KEY = 'stash'
 const TRANSACTOINS_KEY = 'transactions'
 const CURRENT_TRANSACTION_KEY = 'current_transaction'
 const SAUCES_KEY = 'sauces'
+const CLOSE_ORDER_KEY = 'close_order'
+const FIREBASE_TRANSACTIONS_KEY = 'firebase_transaction'
+
+// 
+const getFirebaseTransactions = () => {
+    let value = localStorage.getItem(FIREBASE_TRANSACTIONS_KEY)
+    return (value == null) ? [] : JSON.parse(value)
+}
+const setFirebaseTransactions = (value) => {
+    localStorage.setItem(FIREBASE_TRANSACTIONS_KEY, JSON.stringify(value))
+}
+// 
+
+const getCloseOrder = () => {
+    let value = localStorage.getItem(CLOSE_ORDER_KEY)
+    if (value == null || value == 'false') {
+        return false
+    }
+    return true
+}
+
+const setCloseOrder = (value) => {
+    localStorage.setItem(CLOSE_ORDER_KEY, value)
+    return true
+}
 
 // const CUSTOMER_INFO = ' '
 const getLastDownloadMenu = () => {
@@ -104,5 +129,9 @@ export default () => ({
     getSauces,
     setSauces,
     getLastCloseOrder,
-    setLastCloseOrder
+    setLastCloseOrder,
+    getCloseOrder,
+    setCloseOrder,
+    getFirebaseTransactions,
+    setFirebaseTransactions
 })

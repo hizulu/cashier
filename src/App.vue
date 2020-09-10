@@ -61,11 +61,16 @@ export default {
     drawers: ["Default (no property)", "Permanent", "Temporary"],
     items: [
       { text: "Beranda", icon: "mdi-home", route: "/" },
-      { text: "Kasir", icon: "mdi-folder", route: "/kasir" },
+      { text: "Kasir", icon: "mdi-archive", route: "/kasir" },
       {
         text: "Riwayat Transaksi",
-        icon: "mdi-account-multiple",
+        icon: "mdi-history",
         route: "/riwayat-transaksi"
+      },
+      {
+        text: "Upload Transaksi Harian",
+        icon: "mdi-cloud-upload",
+        route: "/upload-transaksi-harian"
       }
     ],
     dark_mode: false,

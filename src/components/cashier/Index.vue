@@ -1,6 +1,14 @@
 <template>
   <div>
-    <v-alert prominent type="error" v-if="menus.length <= 0">
+    <v-alert v-if="isCloseOrder" prominent type="error">
+      <v-row align="center">
+        <v-col class="grow">
+          Anda sudah
+          <strong>CLOSE ORDER</strong>
+        </v-col>
+      </v-row>
+    </v-alert>
+    <v-alert prominent type="error" v-if="!isCloseOrder && menus.length <= 0">
       <v-row align="center">
         <v-col class="grow">Menu belum didownload, silakan tekan tombol untuk mendownload menu</v-col>
         <v-col class="shrink">
@@ -8,7 +16,7 @@
         </v-col>
       </v-row>
     </v-alert>
-    <v-card outlined>
+    <v-card v-if="!isCloseOrder" outlined>
       <v-container>
         <div class="mb-2">{{ currentDate }}</div>
 
@@ -40,7 +48,7 @@
                       <v-list-item-title
                         v-html="`${(menu.barcode) ? menu.barcode : '-'} ${menu.name}`"
                       ></v-list-item-title>
-                      <v-list-item-subtitle v-html="moneyformatter.format(menu.price)"></v-list-item-subtitle>
+                      <v-list-item-subtitle v-html="moneyformatter.format(menu.price || 0)"></v-list-item-subtitle>
                     </v-list-item-content>
                   </v-list-item>
                 </v-list-item-group>
@@ -73,7 +81,7 @@
                     <v-icon left>mdi-delete</v-icon>clear
                   </v-btn>
                   <v-btn
-                    v-if="transaction_info.stash.length > 0 && transaction_info.paid > 0"
+                    v-if="transaction_info.stash.length >0"
                     @click="print"
                     class="ma-2"
                     depressed
@@ -116,7 +124,9 @@
                 <v-row class="text-right">
                   <v-col>
                     Total:
-                    <span class="text-h6">{{ moneyformatter.format(transaction_info.total) }}</span>
+                    <span
+                      class="text-h6"
+                    >{{ moneyformatter.format(transaction_info.total || 0) }}</span>
                   </v-col>
                 </v-row>
               </v-col>
@@ -150,9 +160,9 @@
                     <tr v-for="(item, i) in transaction_info.stash" :key="item.id">
                       <td>{{ i+1 }}</td>
                       <td>{{ item.name }}</td>
-                      <td align="right">{{ moneyformatter.format(item.price) }}</td>
+                      <td align="right">{{ moneyformatter.format(item.price || 0) }}</td>
                       <td align="right">{{ item.qty }}</td>
-                      <td align="right">{{ moneyformatter.format(item.total) }}</td>
+                      <td align="right">{{ moneyformatter.format(item.total || 0) }}</td>
                       <td class="text-center">
                         <v-btn v-if="!paid" icon color="red" @click="showDeleteDialog(i)">
                           <v-icon>mdi-delete</v-icon>
@@ -304,6 +314,9 @@ export default {
     };
   },
   computed: {
+    isCloseOrder() {
+      return storage().getCloseOrder();
+    },
     paid() {
       return (
         this.transaction_info.stash.length > 0 && this.transaction_info.paid > 0
@@ -317,6 +330,9 @@ export default {
 
       this.loadTransactionData(this.reroute.index);
     }
+    // this.transaction_info = storage().getCurrentTransaction();
+    // this.transaction_info.paid = 0;
+    // this.transaction_info.total = 0;
     this.$refs.cinfo.mount();
     this.countDate();
     this.menus = storage().getMenus();
@@ -345,9 +361,9 @@ export default {
       this.transaction_info = transaction;
       this.sauces = transaction.sauces;
 
-      storage().setSauces(transaction.sauces);
+      storage().setSauces(transaction.sauces || []);
       storage().setCurrentTransaction(transaction);
-      storage().setStash(transaction.stash);
+      storage().setStash(transaction.stash || []);
     },
     getCurrentDate() {
       return this.$moment()
@@ -514,7 +530,9 @@ export default {
     },
     onPaymentConfirm() {
       this.transaction_info = storage().getCurrentTransaction();
+      this.transaction_info.stash = storage().getStash();
       this.openpaymentdialog = false;
+      this.$router.push("/kasir?index=0");
     }
   }
 };

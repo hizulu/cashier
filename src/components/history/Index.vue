@@ -25,7 +25,7 @@
             <router-link :to="`/kasir?index=${item.i-1}`">{{ item.customer_name }}</router-link>
           </template>
           <template v-slot:item.actions="{ item }">
-            <v-icon v-if="item.paid < item.total" small @click="del(item.i-1)">mdi-delete</v-icon>
+            <v-icon v-if="item.paid > 0" small @click="del(item.i-1)">mdi-delete</v-icon>
           </template>
         </v-data-table>
       </v-container>

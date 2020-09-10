@@ -14,8 +14,8 @@
                   <span>{{ (lastDownloadMenu == null) ? '-' : lastDownloadMenu }}</span>
                 </p>
                 <p>
-                  Terakhir close order :
-                  <span>{{ lastCloseOrder || '-'}}</span>
+                  Close Order :
+                  <span>{{ (isCloseOrder) ? 'Ya' : 'Tidak' }}</span>
                 </p>
 
                 <v-alert
@@ -43,7 +43,10 @@
                     <v-btn color="primary" @click="downloadMenu()">Download menu</v-btn>
                   </div>
                   <div class="mx-2 my-2" v-if="lastDownloadMenu != null">
-                    <v-btn>CLOSE ORDER</v-btn>
+                    <v-btn
+                      :loading="loader_close_order"
+                      @click="closeOrder()"
+                    >{{ (isCloseOrder)?'OPEN ORDER' : 'CLOSE ORDER' }}</v-btn>
                   </div>
                 </v-row>
               </div>
@@ -63,10 +66,11 @@ export default {
   data: () => {
     return {
       db: null,
+      loader_close_order: false,
       closeOrderDialog: {
         visible: false
       },
-      lastCloseOrder: null,
+      lastCloseOrder: storage().getCloseOrder(),
       lastDownloadMenu: null,
       loader: {
         downloadMenu: false
@@ -77,6 +81,11 @@ export default {
   created() {
     this.lastDownloadMenu = storage().getLastDownloadMenu();
     this.menus = storage().getMenus();
+  },
+  computed: {
+    isCloseOrder() {
+      return storage().getCloseOrder();
+    }
   },
   mounted() {},
   methods: {
@@ -105,6 +114,11 @@ export default {
           });
         this.loader.downloadMenu = false;
       }, 1000);
+    },
+    closeOrder() {
+      this.loader_close_order = true;
+      storage().setCloseOrder(!storage().getCloseOrder());
+      this.$router.go();
     }
   }
 };

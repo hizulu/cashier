@@ -5,11 +5,11 @@
         <v-card-title>
           <span class="headline">Pembayaran</span>
         </v-card-title>
-        <v-alert
+        <!-- <v-alert
           prominent
           text
           type="info"
-        >Nota akan otomatis tercetak ketika anda selesai mengisi uang tunai pembayaran</v-alert>
+        >Nota akan otomatis tercetak ketika anda selesai mengisi uang tunai pembayaran</v-alert>-->
         <v-card-text>
           <v-row>
             <v-col cols="12" md="8">
@@ -38,6 +38,7 @@
             </v-col>
             <v-col cols="12" md="4" class="text-right text-h6">{{ mf.format(moneyreturn) }}</v-col>
           </v-row>
+          <v-checkbox v-model="print" label="Cetak nota setelah bayar"></v-checkbox>
           <hr />
           <v-row>
             <v-col cols="12" md="4">
@@ -55,8 +56,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="red darken-1" text @click="$emit('close')">BATAL</v-btn>
-          <v-btn color="blue darken-1" text @click="doPay()">BAYAR dan cetak nota</v-btn>
-          <v-btn color="blue darken-1" text @click="$emit('paymentconfirm')">confirm</v-btn>
+          <v-btn color="blue darken-1" text @click="doPay()">bayar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -87,6 +87,7 @@ export default {
   data() {
     return {
       mf: money(),
+      print: true,
       printerStatus: false,
       value: null,
       moneyreturn: 0,
@@ -163,10 +164,10 @@ export default {
             ...{
               customer_name: currentTransaction.customer_name,
               table_number: currentTransaction.table_number,
-              stash: currentTransaction.stash,
-              sauces: currentTransaction.sauces,
+              stash: currentTransaction.stash || storage().getStash(),
+              sauces: currentTransaction.sauces || storage().getSauces(),
               id: currentTransaction.id ? currentTransaction.id : Date.now(),
-              total: currentTransaction.total
+              total: currentTransaction.total || this.total
             }
           };
           storage().setCurrentTransaction(paidTransaction);
@@ -175,11 +176,11 @@ export default {
           for (let i = 0; i < transactions.length; i++) {
             if (transactions[i].id == paidTransaction.id) {
               transactions.splice(i, 1);
-              transactions.unshift(paidTransaction);
-              storage().setTransactions(transactions);
               break;
             }
           }
+          transactions.unshift(paidTransaction);
+          storage().setTransactions(transactions);
           let obj = {
             ...storage().getCurrentTransaction(),
             ...{ stash: storage().getStash() },
@@ -187,8 +188,12 @@ export default {
             total: this.total
           };
           // console.log(obj);
-          // alert("diprint");
-          printer().print(obj);
+          // alert(`${obj}`);
+          if (this.print) {
+            printer().print(obj);
+          }
+
+          this.$emit("paymentconfirm");
         }
       }
     }
